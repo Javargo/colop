@@ -1,0 +1,31 @@
+Szia Balázs!
+
+Mellékelem az általunk készített CPT alapú cölöpteherbírásszámító excelünket. A fájlban jelenleg van jó pár CPT szondaeredmény és így rengeteg lap.
+
+•	Az excelben az elsõ fül egy összefoglaló oldal, ahol egy halmozott CPT diagram készül a szondaeredmények alapján, illetve minden CPT szondaeredmény (csúcsellenállás) magassági értelemben be van illesztve.
+•	A továbbiakban minden szondaeredményhez két lap tartozik. Ezeken történik az adott CPT eredmények számítása.
+•	A végén található számítás fülön vannak összefoglalva a számítási eredmények és itt kerül kiszámításra a cölöpteherbírás.
+
+A számítás alapját a mellékelt PhD értekezés (Szepeshazi Colopmeretezes PhD-ertekezes.pdf) adja. Ebben részletesen le van írva az eljárás. 18. oldalon a CPT-n alapuló számítás alapja, a 27. oldaltól pedig a holland módszer található, melyet mi használunk. Ezt foglalja össze a Magyar Mérnöki Kamara Geotechnikai Tagozatának a kis füzetecskéje (14-GEOT-2017_colopalapozasok.pdf 1-16. oldal), amelyben szereplõ tényezõket mi alkalmazunk a különbözõ cölöptípusok használatakor.
+
+Az excelünk félautomata. Sok paramétert beállítástól függõen automatikusan kiszámít vagy hozzárendel a számításhoz, de van pár dolog amit még kézzel (és mérnöki szemmel) kell meghatározni. Pl. talajazonosítás. Számunkra a leggördülékenyebb az lenne, ha a szondaeredmények beolvasása után a fõbb paraméterek (pl. cölöptípus, cölöphossz, átmérõ, stb.) beállítását követõen egy program/excel füzet automatikusan meghatározná a cölöp teherbírását.
+
+Szerintem ez most elsõre bõven elég. Ha van idõd és energiád ezzel foglalkozni akkor nézz bele az irodalomba és az excelünkbe, aztán üljünk össze hogy mik a lehetõségek.
+
+Amennyiben bármi kérdés felmerül, készséggel állunk rendelkezésedre.
+
+Kellemes hétvégét:
+ZT Budapesti Mûszaki Iroda
+
+Mit freundlichen Grüßen / Best Regards / Üdvözlettel
+
+Csongor MÁRTON
+___________________________________________
+Zentrale Technik · Central Technical Division
+Technisches Büro Budapest (TB-BP) · Technical Office Budapest · Budapesti Mûszaki Iroda
+Csongor MÁRTON 
+Projektingenieur · Project Engineer · Projektmérnök
+Strabag AG
+Gábor Dénes utca 2 INFOPARK D épület · 1117 Budapest
+Mobil +36 30 3085984
+www.strabag.com · csongor.marton@strabag.com
