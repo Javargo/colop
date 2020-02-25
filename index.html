@@ -9,7 +9,46 @@
 		<script src="main.js" defer></script>
 	</head>
 	<body onload="bodyLoaded(event)">
-		<canvas id="paint_area" width="800" height="600" style="border: 3px solid green;"></canvas>
+		<canvas id="paint_area" width="200" height="600" style="border: 3px solid green;"></canvas>
+		<table>
+			<tr>
+				<td>Cölöptalp mélysége [m]</td>
+				<td><input id="pile_length_input" type="text" value="20"/></td>
+			</tr>
+			<tr>
+				<td>Cölöp átmérője [m]</td>
+				<td><input id="diameter_input" type="text" value="0,62"/></td>
+			</tr>
+			<tr>
+				<td>Talaj típusa</td>
+				<td>
+					<select id="soil_type_select">
+						<option value="0">kötött</option>
+						<option value="1">szemcsés</option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<td>Technológia</td>
+				<td>
+					<select id="technology_select">
+						<optgroup label="Talaj-kiszorításos cölöp">
+							<option value="0">vert, előregyártott vasbeton elem</option>
+							<option value="1">vert, zárt végű bennmaradó acélcső</option>
+							<option value="2">zárt véggel lehajtott és visszahúzott cső
+	helyén betonozott</option>
+							<option value="3">csavart, helyben betonozott</option>
+						</optgroup>
+						<optgroup label="Talaj-helyettesítéses cölöp">
+							<option value="4">CFA-cölöp</option>
+							<option value="5">fúrt, támasztófolyadék védelemmel</option>
+							<option value="6">fúrt, béléscső védelemmel</option>
+						</optgroup>
+					</select>
+				</td>
+			</tr>
+		</table>
 		<canvas id="thomson" width="200" height="200"></canvas>
+		<input type="button" value="Számítás" onclick="calculate()"/>
 	</body>
 </html>
