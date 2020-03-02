@@ -17,6 +17,7 @@
 var canvasControl;
 var qcDataFileName="qc01.txt";
 var qcs;
+var dy=0.02;
 
 
 function bodyLoaded(e)
@@ -163,12 +164,84 @@ var soilCathegories=
 	}
 ];
 
+var technologycalFactors=
+[
+	{
+		description_hu: "vert, előre gyártott vasbeton elem",
+		alpha_b: 1.00, //talpellenállási szorzó, szemcsés talajnál
+		alpha_sq: 0.90, //palástellenállási szorzó, szemcsés talajnál
+		q_smax_gran: 150, //palástellenállás maximuma, szemcsés talajnál
+		mu_b: 1.00, //talpellenállási szorzó, kötött talajnál
+		mu_sg: 1.05, //palástellenállási szorzó, kötött talajnál
+		q_smax_coh: 85, //palástellenállás maximuma, kötött talajnál
+	},
+	
+	{
+		description_hu: "vert, zárt végű bennmaradó acélcső",
+		alpha_b: 1.00, //talpellenállási szorzó, szemcsés talajnál
+		alpha_sq: 0.75, //palástellenállási szorzó, szemcsés talajnál
+		q_smax_gran: 120, //palástellenállás maximuma, szemcsés talajnál
+		mu_b: 1.00, //talpellenállási szorzó, kötött talajnál
+		mu_sg: 0.80, //palástellenállási szorzó, kötött talajnál
+		q_smax_coh: 70 //palástellenállás maximuma, kötött talajnál
+	},
+	
+	{
+		description_hu: "zárt véggel lehajtott és visszahúzott cső helyén betonozott",
+		alpha_b: 1.00, //talpellenállási szorzó, szemcsés talajnál
+		alpha_sq: 1.10, //palástellenállási szorzó, szemcsés talajnál
+		q_smax_gran: 160, //palástellenállás maximuma, szemcsés talajnál
+		mu_b: 1.00, //talpellenállási szorzó, kötött talajnál
+		mu_sg: 1.10, //palástellenállási szorzó, kötött talajnál
+		q_smax_coh: 90 //palástellenállás maximuma, kötött talajnál
+	},
+	
+	{
+		description_hu: "csavart, helyben betonozott",
+		alpha_b: 0.80, //talpellenállási szorzó, szemcsés talajnál
+		alpha_sq: 0.75, //palástellenállási szorzó, szemcsés talajnál
+		q_smax_gran: 160, //palástellenállás maximuma, szemcsés talajnál
+		mu_b: 0.90, //talpellenállási szorzó, kötött talajnál
+		mu_sg: 1.25, //palástellenállási szorzó, kötött talajnál
+		q_smax_coh: 100 //palástellenállás maximuma, kötött talajnál
+	},
+	
+	{
+		description_hu: "CFA-cölöp",
+		alpha_b: 0.70, //talpellenállási szorzó, szemcsés talajnál
+		alpha_sq: 0.55, //palástellenállási szorzó, szemcsés talajnál
+		q_smax_gran: 120, //palástellenállás maximuma, szemcsés talajnál
+		mu_b: 0.90, //talpellenállási szorzó, kötött talajnál
+		mu_sg: 1.00, //palástellenállási szorzó, kötött talajnál
+		q_smax_coh: 80 //palástellenállás maximuma, kötött talajnál
+	},
+	
+	{
+		description_hu: "fúrt, támasztófolyadék védelemmel",
+		alpha_b: 0.50, //talpellenállási szorzó, szemcsés talajnál
+		alpha_sq: 0.50, //palástellenállási szorzó, szemcsés talajnál
+		q_smax_gran: 100, //palástellenállás maximuma, szemcsés talajnál
+		mu_b: 0.80, //talpellenállási szorzó, kötött talajnál
+		mu_sg: 1.00, //palástellenállási szorzó, kötött talajnál
+		q_smax_coh: 80 //palástellenállás maximuma, kötött talajnál
+	},
+	
+	{
+		description_hu: "fúrt, béléscső védelemmel",
+		alpha_b: 0.50, //talpellenállási szorzó, szemcsés talajnál
+		alpha_sq: 0.45, //palástellenállási szorzó, szemcsés talajnál
+		q_smax_gran: 80, //palástellenállás maximuma, szemcsés talajnál
+		mu_b: 0.80, //talpellenállási szorzó, kötött talajnál
+		mu_sg: 1.00, //palástellenállási szorzó, kötött talajnál
+		q_smax_coh: 80 //palástellenállás maximuma, kötött talajnál
+	}
+];
 
 
 
 function renderDrawing()
 {
-	var c=document.getElementById("thomson").getContext('2d');
+	var c=document.getElementById("robertson").getContext('2d');
 	c.strokeStyle = "black";
 	c.strokeWidth = 0.1;
 	for(var i=0; i<soilCathegories.length; i++)
@@ -188,10 +261,95 @@ function renderDrawing()
 }
 
 
+function isGranular(i)
+{
+	if(document.getElementById("soil_type_select").value==1)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+function q_s_cal(i, factors)
+{
+	var x;
+	if(isGranular(i))
+	{
+		x=Math.min(factors.alpha_sq*Math.sqrt(qcs[i]*1000), factors.q_smax_gran);
+	}
+	else
+	{
+		x=Math.min(1.2*factors.mu_sg*Math.sqrt(qcs[i]*1000), factors.q_smax_coh);
+	}
+	return x;
+}
+
 function calculate()
 {
+	//kézi input adatok
+	//manual input data
+	var pileHeadDepth=parseFloat(document.getElementById("pile_head_depth_input").value.replace(",", "."));
+	var pileTipDepth=parseFloat(document.getElementById("pile_tip_depth_input").value.replace(",", "."));
+	var diameter=parseFloat(document.getElementById("diameter_input").value.replace(",", "."));
+	var soilType=document.getElementById("soil_type_select").value;
+	var technology=document.getElementById("technology_select").value;
 	
-	console.log("Hello");
+	var factors=technologycalFactors[technology];
+	
+	//Palástellenállás
+	//skin resistance
+	var R_s_cal_is=[];
+	var iH=Math.ceil(pileHeadDepth/dy-0.5);
+	var row={};
+	row.i=iH;
+	row.h=(iH+0.5)*dy-pileHeadDepth;
+	row.isGranular=isGranular(i);
+	row.qc=qcs[iH];
+	row.q_s_cal=q_s_cal(iH, factors);
+	row.R_s_cal_i=row.h*diameter*Math.PI*row.q_s_cal;
+	R_s_cal_is.push(row);
+	for(i=iH+1; ((i+0.5)*dy)<=pileTipDepth; i++)
+	{
+		row={};
+		row.i=i;
+		row.h=dy;
+		row.isGranular=isGranular(i);
+		row.qc=qcs[i];
+		row.q_s_cal=q_s_cal(i, factors);
+		row.R_s_cal_i=row.h*diameter*Math.PI*row.q_s_cal;
+		R_s_cal_is.push(row);
+	}
+	row={};
+	row.i=i;
+	row.h=pileTipDepth-(i-0.5)*dy;
+	row.isGranular=isGranular(i);
+	row.qc=qcs[i];
+	row.q_s_cal=q_s_cal(i, factors);
+	row.R_s_cal_i=row.h*diameter*Math.PI*row.q_s_cal;
+	R_s_cal_is.push(row);
+
+	//console.log(R_s_cal);
+	var R_s_cal=0;
+	table=document.createElement("table");
+	for(var i=0; i<R_s_cal_is.length; i++)
+	{
+		var row=table.insertRow();
+		row.insertCell().textContent=R_s_cal_is[i].i;
+		row.insertCell().textContent=(R_s_cal_is[i].i*dy).toFixed(2);
+		row.insertCell().textContent=R_s_cal_is[i].h.toFixed(3);
+		row.insertCell().textContent=R_s_cal_is[i].isGranular;
+		row.insertCell().textContent=R_s_cal_is[i].qc.toFixed(2);
+		row.insertCell().textContent=R_s_cal_is[i].q_s_cal.toFixed(1);
+		row.insertCell().textContent=R_s_cal_is[i].R_s_cal_i.toFixed(3);
+		R_s_cal+=R_s_cal_is[i].R_s_cal_i;
+	}
+	var cell=table.insertRow().insertCell();
+	cell.setAttribute("colspan", "7");
+	cell.textContent=R_s_cal.toFixed(3);
+	document.body.appendChild(table);
 }
 
 //****************************
