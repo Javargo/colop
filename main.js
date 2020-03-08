@@ -287,6 +287,137 @@ function q_s_cal(i, factors)
 	return x;
 }
 
+function qcI(t, pileTipDepth)
+{
+	//var rows=[];
+	var sum=0;
+	var n=0;
+	var i_start=Math.ceil(pileTipDepth/dy+0.5);
+	var i_end=Math.floor(t/dy+0.5);
+	for(var i=i_start; i<=i_end; i++)
+	{
+		//row={};
+		//row.i=i;
+		//row.qc=qcs[i];
+		//rows.push(row);
+		sum+=qcs[i];
+		n++;
+	}
+	return sum/n;
+}
+
+function qcII(t, pileTipDepth)
+{
+	var sum=0;
+	var n=0;
+	var i_start=Math.ceil(pileTipDepth/dy+0.5);
+	var i_end=Math.floor(t/dy+0.5);
+	var min=qcs[i_end];
+	//in fact, we go from i_end to i_start, that means upwards
+	for(var i=i_end; i>=i_start; i--)
+	{
+		//row={};
+		//row.i=i;
+		//row.qc=qcs[i];
+		//rows.push(row);
+		if(qcs[i]<=qcs[i+1] && qcs[i]<qcs[i-1])
+		//this is a minimum place
+		{
+			if(qcs[i]<min)
+			//this value has to be considered
+			{
+				sum+=qcs[i];
+				n++;
+				min=qcs[i];
+			}
+		}
+	}
+	//checking the last value
+	if(qcs[i_start]<min)
+	//this value has to be considered
+	{
+		sum+=qcs[i_start];
+		n++;
+	}
+	//checking, if have found any minimums at all
+	if(n==0)
+	//if not, the first value has to be added
+	{
+		sum+=qcs[i_end];
+		n=1;
+	}
+	return sum/n;
+}
+
+function qcIII(t, pileTipDepth, pileHeadDepth, diameter, startValue)
+{
+	var sum=0;
+	var n=0;
+	var i_start=Math.ceil(pileTipDepth/dy+0.5);
+	var i_end=Math.floor(Math.max(pileTipDepth-8*diameter, pileHeadDepth)/dy+0.5);
+	var min=startValue;
+	//in fact, we go from i_end to i_start, that means upwards
+	for(var i=i_end; i>=i_start; i--)
+	{
+		//row={};
+		//row.i=i;
+		//row.qc=qcs[i];
+		//rows.push(row);
+		if(qcs[i]<=qcs[i+1] && qcs[i]<qcs[i-1])
+		//this is a minimum place
+		{
+			if(qcs[i]<min)
+			//this value has to be considered
+			{
+				sum+=qcs[i];
+				n++;
+				min=qcs[i];
+			}
+		}
+	}
+	//checking the last value
+	if(qcs[i_start]<min)
+	//this value has to be considered
+	{
+		sum+=qcs[i_start];
+		n++;
+	}
+	//checking, if have found any minimums at all
+	if(n==0)
+	//if not, the first value has to be added
+	{
+		sum=startValue;
+		n=1;
+	}
+	return Math.min(sum/n, 2.00);
+}
+
+function qcc(t, pileTipDepth, pileHeadDepth, diameter)
+{
+	var qc1=qcI(t, pileTipDepth);
+	var qc2=qcII(t, pileTipDepth);
+	var qc3=qcIII(t, pileTipDepth, pileHeadDepth, diameter, qc2);
+	return 0.5*qc1+0.25*(qc2+qc3);
+}
+
+function tkrit(pileTipDepth, pileHeadDepth, diameter)
+{
+	var yStart=Math.round((pileTipDepth+0.7*diameter)*100)/100;
+	var yEnd=Math.round((pileTipDepth+4*diameter)*100)/100;
+	var yMin=yStart;
+	var min=qcc(yMin, pileTipDepth, pileHeadDepth, diameter);
+	for(var y=yStart; y<=yEnd; y+=0.01)
+	{
+		var x=qcc(y, pileTipDepth, pileHeadDepth, diameter);
+		if(x<min)
+		{
+			min=x;
+			yMin=y;
+		}
+		return yMin;
+	}
+}
+
 function calculate()
 {
 	//kézi input adatok
@@ -301,17 +432,17 @@ function calculate()
 	
 	//Palástellenállás
 	//skin resistance
-	var R_s_cal_is=[];
-	var iH=Math.ceil(pileHeadDepth/dy-0.5);
+	var rows=[];
+	var i=Math.floor(pileHeadDepth/dy+0.5);
 	var row={};
-	row.i=iH;
-	row.h=(iH+0.5)*dy-pileHeadDepth;
+	row.i=i;
+	row.h=(i+0.5)*dy-pileHeadDepth;
 	row.isGranular=isGranular(i);
-	row.qc=qcs[iH];
-	row.q_s_cal=q_s_cal(iH, factors);
+	row.qc=qcs[i];
+	row.q_s_cal=q_s_cal(i, factors);
 	row.R_s_cal_i=row.h*diameter*Math.PI*row.q_s_cal;
-	R_s_cal_is.push(row);
-	for(i=iH+1; ((i+0.5)*dy)<=pileTipDepth; i++)
+	rows.push(row);
+	for(i++; ((i+0.5)*dy)<=pileTipDepth; i++)
 	{
 		row={};
 		row.i=i;
@@ -320,7 +451,7 @@ function calculate()
 		row.qc=qcs[i];
 		row.q_s_cal=q_s_cal(i, factors);
 		row.R_s_cal_i=row.h*diameter*Math.PI*row.q_s_cal;
-		R_s_cal_is.push(row);
+		rows.push(row);
 	}
 	row={};
 	row.i=i;
@@ -329,27 +460,35 @@ function calculate()
 	row.qc=qcs[i];
 	row.q_s_cal=q_s_cal(i, factors);
 	row.R_s_cal_i=row.h*diameter*Math.PI*row.q_s_cal;
-	R_s_cal_is.push(row);
+	rows.push(row);
 
 	//console.log(R_s_cal);
 	var R_s_cal=0;
 	table=document.createElement("table");
-	for(var i=0; i<R_s_cal_is.length; i++)
+	table.setAttribute("class", "sum_table");
+	for(var i=0; i<rows.length; i++)
 	{
 		var row=table.insertRow();
-		row.insertCell().textContent=R_s_cal_is[i].i;
-		row.insertCell().textContent=(R_s_cal_is[i].i*dy).toFixed(2);
-		row.insertCell().textContent=R_s_cal_is[i].h.toFixed(3);
-		row.insertCell().textContent=R_s_cal_is[i].isGranular;
-		row.insertCell().textContent=R_s_cal_is[i].qc.toFixed(2);
-		row.insertCell().textContent=R_s_cal_is[i].q_s_cal.toFixed(1);
-		row.insertCell().textContent=R_s_cal_is[i].R_s_cal_i.toFixed(3);
-		R_s_cal+=R_s_cal_is[i].R_s_cal_i;
+		row.insertCell().textContent=rows[i].i;
+		row.insertCell().textContent=(rows[i].i*dy).toFixed(2);
+		row.insertCell().textContent=rows[i].h.toFixed(3);
+		row.insertCell().textContent=rows[i].isGranular;
+		row.insertCell().textContent=rows[i].qc.toFixed(2);
+		row.insertCell().textContent=rows[i].q_s_cal.toFixed(1);
+		row.insertCell().textContent=rows[i].R_s_cal_i.toFixed(3);
+		R_s_cal+=rows[i].R_s_cal_i;
 	}
 	var cell=table.insertRow().insertCell();
 	cell.setAttribute("colspan", "7");
 	cell.textContent=R_s_cal.toFixed(3);
 	document.body.appendChild(table);
+	
+	var t=tkrit(pileTipDepth, pileHeadDepth, diameter);
+	console.log("tkrit = "+t);
+	console.log("qcI = "+qcI(t, pileTipDepth).toFixed(3));
+	var x=qcII(t, pileTipDepth);
+	console.log("qcII = "+x.toFixed(3));
+	console.log("qcIII = "+qcIII(t, pileTipDepth, pileHeadDepth, diameter, x).toFixed(3));
 }
 
 //****************************
