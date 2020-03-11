@@ -26,8 +26,8 @@
 		<script src="main.js" defer></script>
 	</head>
 	<body onload="bodyLoaded(event)">
-	<div id="grid_container" style="display: grid; grid-template-columns: 205px auto auto; grid-gap: 5px; 	padding: 5px;">
-			<div id="cpt_graph_area" style="grid-column: 1; grid-row: 1 / 10; overflow-y: auto;">
+		<div id="grid_container" style="display: grid; grid-template-columns: 205px auto auto; grid-gap: 5px; 	padding: 5px;">
+			<div id="cpt_graph_area" style="grid-column: 1; grid-row: 1 / 12; overflow-y: auto;">
 				<canvas id="paint_area" width="200" height="600" style="border: 3px solid green;"></canvas>
 			</div>
 			
@@ -46,7 +46,7 @@
 				<option value="1">szemcsés</option>
 			</select>
 			
-			<label for="soil_type_select" style="grid-column: 2; grid-row: 5">Technológia</label>
+			<label for="technology_select_select" style="grid-column: 2; grid-row: 5">Technológia</label>
 			<select id="technology_select" style="grid-column: 3; grid-row: 5">
 				<optgroup label="Talaj-kiszorításos cölöp">
 					<option value="0">vert, előregyártott vasbeton elem</option>
@@ -62,22 +62,23 @@ helyén betonozott</option>
 				</optgroup>
 			</select>
 			
-			<label for="soil_type_select" style="grid-column: 2; grid-row: 6">Talajfajta</label>
+			<label for="clay_type_select" style="grid-column: 2; grid-row: 6">Talajfajta</label>
 			<select id="clay_type_select" style="grid-column: 3; grid-row: 6">
 				<option value="0">sovány agyag</option>
 				<option value="1" selected="selected">közepes agyag</option>
 				<option value="2">kövér agyag</option>
 			</select>
 			
-			<label for="ssand_gravel_select" style="grid-column: 2; grid-row: 7">Talajfajta</label>
+			<label for="sand_gravel_select" style="grid-column: 2; grid-row: 7">Talajfajta</label>
 			<select id="sand_gravel_select" style="grid-column: 3; grid-row: 7">
 				<option value="0" selected="selected">homok</option>
 				<option value="1">kavics</option>
 			</select>
 
-			<input type="button" value="Számítás" onclick="calculate()" style="grid-column: 2 / 3; grid-row: 8"/>
-
+			<input type="button" value="Számítás" onclick="calculate()" style="grid-column: 2 / span 2; grid-row: 8"/>
+			<div id="output_area" style="grid-row: 9 / span 2; grid-column: 2 / span 2; background-color: #cccccc; min-height: 100px; white-space: pre-line"></div>
 		</div>
+
 		
 		<hr/>
 		<canvas id="robertson" width="200" height="200"></canvas>

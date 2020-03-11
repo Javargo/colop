@@ -427,7 +427,8 @@ function calculate()
 	var diameter=parseFloat(document.getElementById("diameter_input").value.replace(",", "."));
 	var soilType=document.getElementById("soil_type_select").value;
 	var technology=document.getElementById("technology_select").value;
-	
+	var sand_or_gravel=document.getElementById("sand_gravel_select").value;
+	var lambda_b=sand_or_gravel==0?0.6:0.8;
 	var factors=technologycalFactors[technology];
 	
 	//Palástellenállás
@@ -462,7 +463,6 @@ function calculate()
 	row.R_s_cal_i=row.h*diameter*Math.PI*row.q_s_cal;
 	rows.push(row);
 
-	//console.log(R_s_cal);
 	var R_s_cal=0;
 	table=document.createElement("table");
 	table.setAttribute("class", "sum_table");
@@ -484,11 +484,19 @@ function calculate()
 	document.body.appendChild(table);
 	
 	var t=tkrit(pileTipDepth, pileHeadDepth, diameter);
-	console.log("tkrit = "+t);
-	console.log("qcI = "+qcI(t, pileTipDepth).toFixed(3));
-	var x=qcII(t, pileTipDepth);
+	var R_b_cal=lambda_b*factors.alpha_b*qcc(tkrit, pileTipDepth, pileHeadDepth, diameter);
+	var outputArea=document.getElementById("output_area");
+	outputArea.innerHTML="";
+	outputArea.textContent+=("Rscal = "+R_s_cal.toFixed(2)+"\n");
+	outputArea.textContent+=("tkrit = "+t+"\n");
+	outputArea.textContent+=("qcI = "+qcI(t, pileTipDepth).toFixed(3)+"\n");
+		var x=qcII(t, pileTipDepth);
+		outputArea.textContent+=("qcII = "+x.toFixed(3)+"\n");
+		outputArea.textContent+=("qcIII = "+qcIII(t, pileTipDepth, pileHeadDepth, diameter, x).toFixed(3)+"\n");
 	console.log("qcII = "+x.toFixed(3));
 	console.log("qcIII = "+qcIII(t, pileTipDepth, pileHeadDepth, diameter, x).toFixed(3));
+	outputArea.textContent+=("Rbcal = "+R_b_cal.toFixed(2)+"\n");
+	
 }
 
 //****************************
