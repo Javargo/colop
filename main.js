@@ -15,77 +15,151 @@
 
 //****************************************
 var canvasControl;
-var qcDataFileName="qc01.txt";
-var qcs;
+var cptData=[];
 var dy=0.02;
+var robertsonRegions=[];
+var robertsonGranularRegion;
+var robertsonDiagramContext;
+//var isCalculable=false;
 
 
 function bodyLoaded(e)
 {
 	canvasControl=document.getElementById("paint_area");
 	//smartizeCanvas(canvasControl);
-	//Loading the test data
-	var request = new XMLHttpRequest();
-	request.open("GET", qcDataFileName, false);
-	request.overrideMimeType("text/plain")
-	request.send("");
-	var lines=request.responseText.split("\n");
-	qcs=[];
-	var last_y=-0.02;
-	for(var i=2; i<lines.length; i++)
+	renderRobertsonDiagram();
+};
+
+
+function parseCPTLine(line, i)
+{
+	var yCol=0;
+	var qcCol=1;
+	var fpCol=4;
+	var s=line.trim().split("\t");
+	if(s.length<Math.max(yCol, qcCol, fpCol))
 	{
-		//console.log(lines[i]);
-		if(lines[i].length>0)
+		throw "A(z) "+(i+1)+". sorban az oszlopok száma kevés!";
+	}
+	
+	var y=parseFloat(s[yCol].replace(",", "."));
+	if(y==NaN)
+	{
+		throw "A(z) "+(i+1)+". sorban nem lehet beolvasni az y értéket, mert a(z) "+(yCol+1)+". oszlop nem számot tartalmaz.";
+	}
+	var qc=parseFloat(s[qcCol].replace(",", "."));
+	if(qc==NaN)
+	{
+		throw "A(z) "+(i+1)+". sorban nem lehet beolvasni a qc értéket, mert a(z) "+(qcCol+1)+". oszlop nem számot tartalmaz.";
+	}
+	var fp=parseFloat(s[fpCol].replace(",", "."));
+	if(fp==NaN)
+	{
+		throw "A(z) "+(i+1)+". sorban nem lehet beolvasni az fp értéket, mert a(z) "+(fpCol+1)+". oszlop nem számot tartalmaz.";
+	}
+	return [y, {"qc": qc, "fp": fp}];
+}
+
+function parseCPTData(text)
+{
+	var data=[];
+	var lines=text.split("\n");
+	while(lines[lines.length-1].length==0)
+	{
+		lines.pop();
+	}
+	var isData=false;
+	var lastY;
+	for(var i=0; i<lines.length; i++)
+	{
+		if(isData==true)
 		{
-			var s=lines[i].trim().split("\t");
-			if(s.length==2)
+			var x=parseCPTLine(lines[i], i);
+			var y=x[0];
+			if(Math.round(y*100)==Math.round((lastY+dy)*100))
 			{
-				var y=parseFloat(s[0].replace(",", "."));
-				var qc=parseFloat(s[1].replace(",", "."));
-				//console.log(y.toFixed(2) + "\t" + qc.toFixed(2));
-				if(Math.abs(y-last_y-0.02)<=0.001)
-				{
-					qcs.push(qc);
-					last_y=y;
-				}
-				else
-				{
-					throw "Wrong y value in line "+(i+1);
-				}
+				data.push(x[1]);
+				lastY=y;
 			}
 			else
 			{
-				throw "Incomplete line "+(i+1);
+				throw "CPT adatsor nem folytonos "+y.toFixed(2)+" m mélységnél. Az várt érték "+(lastY+dy).toFixed(2)+" m.";
+			}
+		}
+		else
+		{
+			var s=lines[i].trim().split("\t");
+			y=parseFloat(s[0].replace(",", "."));
+			if(y==0)
+			{
+				data.push(parseCPTLine(lines[i], i)[1]);
+				lastY=0;
+				isData=true;
 			}
 		}
 	}
 	
+	//végigmegy a data sorain meghatározza a talaj kategóriát
+	for(var i=0; i<data.length; i++)
+	{
+		data[i].soilCathegoryCalculated=robertsonSoilCathegory(data[i].qc, data[i].fp);
+		data[i].isGranularCalculated=robertsonIsGranular(data[i].qc, data[i].fp);
+	}
+	return data;
+}
+
+function renderData()
+{
 	//maximal qc value
 	var max_qc=0;
-	for(var i=0; i<qcs.length; i++)
+	for(var i=0; i<cptData.length; i++)
 	{
-		if(qcs[i]>max_qc)
+		if(cptData[i].qc>max_qc)
 		{
-			max_qc=qcs[i];
+			max_qc=cptData[i].qc;
 		}
 	}
-	var hScale=400/max_qc;
-	//var vScale=c.canvas.height/qcs.length;
-	var vScale=0.2;
+	
+	//set up
 	var c=canvasControl.getContext('2d');
+	var leftSideWidth=c.canvas.width*0.65;
+	var rightSideWidth=c.canvas.width-leftSideWidth;
+	var hScale=leftSideWidth/max_qc;
+	var vScale=c.canvas.height/cptData.length/dy;
 	c.fillStyle = "white";
 	c.fillRect(0, 0, c.canvas.width, c.canvas.height);
-	c.strokeStyle = "red";
+	//lines in each meter
+	c.strokeStyle = "gray";
 	c.beginPath();
-	c.moveTo(qcs[0]*hScale, 0*vScale);
-	for(var i=1; i<qcs.length; i++)
+	for(var y=0; y<=cptData.length*dy; y++)
 	{
-		c.lineTo(qcs[i]*hScale, i*vScale);
+		var scaledY=Math.round(y*vScale)+0.5;
+		c.moveTo(0, scaledY);
+		c.lineTo(c.canvas.width, scaledY);
 	}
 	c.stroke();
-	//alert(request.responseText);
-	renderDrawing();
-};
+	
+	//cpt diagram
+	c.strokeStyle = "red";
+	c.beginPath();
+	c.moveTo(cptData[0].qc*hScale, 0*vScale);
+	for(var i=1; i<cptData.length; i++)
+	{
+		c.lineTo(cptData[i].qc*hScale, i*dy*vScale);
+	}
+	c.stroke();
+	
+	//pile geometry
+	var pileHeadDepth=parseFloat(document.getElementById("pile_head_depth_input").value.replace(",", "."));
+	var pileTipDepth=parseFloat(document.getElementById("pile_tip_depth_input").value.replace(",", "."));
+	var diameter=parseFloat(document.getElementById("diameter_input").value.replace(",", "."));
+	c.strokeStyle = "black";
+	c.fillStyle = "gray";
+	c.beginPath();
+	c.rect(leftSideWidth+rightSideWidth/2-vScale*diameter/2, pileHeadDepth*vScale, diameter*vScale, (pileTipDepth-pileHeadDepth)*vScale);
+	c.fill();
+	c.stroke();
+}
 
 
 var soilCathegories=
@@ -164,6 +238,8 @@ var soilCathegories=
 	}
 ];
 
+granularPoints=[[0,200], [0,66], [15,62], [23,67], [47,87], [62,106], [75,128], [79,139], [94,180], [94,200]];
+
 var technologycalFactors=
 [
 	{
@@ -237,27 +313,73 @@ var technologycalFactors=
 	}
 ];
 
+var Nkts=
+[
+	13,
+	15,
+	17
+];
 
 
-function renderDrawing()
+function renderRobertsonDiagram()
 {
 	var c=document.getElementById("robertson").getContext('2d');
+	robertsonDiagramContext=c;
 	c.strokeStyle = "black";
-	c.strokeWidth = 0.1;
+	c.lineWidth = 0.2;
 	for(var i=0; i<soilCathegories.length; i++)
 	{
 		var x=soilCathegories[i];
 		c.fillStyle=x.color;
-		c.beginPath();
-		c.moveTo(x.points[0][0], x.points[0][1]);
+		var path=new Path2D();
+		path.moveTo(x.points[0][0], x.points[0][1]);
 		for(var j=1; j<x.points.length; j++)
 		{
-			c.lineTo(x.points[j][0], x.points[j][1]);
+			path.lineTo(x.points[j][0], x.points[j][1]);
 		}
-		c.closePath();
-		c.fill();
-		c.stroke();
+		path.closePath();
+		c.fill(path);
+		c.stroke(path);
+		robertsonRegions.push(path);		
 	}
+	
+	//granular region
+	c.lineWidth=2;
+	var path=new Path2D();
+	path.moveTo(granularPoints[0][0], granularPoints[0][1]);
+	for(var j=1; j<granularPoints.length; j++)
+		{
+			path.lineTo(granularPoints[j][0], granularPoints[j][1]);
+		}
+	path.closePath();
+	c.stroke(path);
+	robertsonGranularRegion=path;
+}
+
+function robertsonSoilCathegory(qc, rf)
+{
+	var x=rf*20;
+	var y=Math.log(qc)/Math.LN10*200/3+200/3;
+	robertsonDiagramContext.fillStyle="black";
+	robertsonDiagramContext.beginPath();
+	robertsonDiagramContext.arc(x, y, 1, 0, 2*Math.PI);
+	robertsonDiagramContext.fill();
+	for(var i=0; i<robertsonRegions.length; i++)
+	{
+		if(robertsonDiagramContext.isPointInPath(robertsonRegions[i], x, y, "evenodd")==true)
+		{
+			return(i);
+		}
+	}
+	return NaN;
+	//throw "No respective soil cathegory found for qc="+qc+" rf="+rf;
+}
+
+function robertsonIsGranular(qc, rf)
+{
+	var x=rf*20;
+	var y=Math.log(qc)/Math.LN10*200/3+200/3;
+	return robertsonDiagramContext.isPointInPath(robertsonGranularRegion, x, y, "evenodd");
 }
 
 
@@ -273,16 +395,16 @@ function isGranular(i)
 	}
 }
 
-function q_s_cal(i, factors)
+function qscal(i, factors)
 {
 	var x;
 	if(isGranular(i))
 	{
-		x=Math.min(factors.alpha_sq*Math.sqrt(qcs[i]*1000), factors.q_smax_gran);
+		x=Math.min(factors.alpha_sq*Math.sqrt(cptData[i].qc*1000), factors.q_smax_gran);
 	}
 	else
 	{
-		x=Math.min(1.2*factors.mu_sg*Math.sqrt(qcs[i]*1000), factors.q_smax_coh);
+		x=Math.min(1.2*factors.mu_sg*Math.sqrt(cptData[i].qc*1000), factors.q_smax_coh);
 	}
 	return x;
 }
@@ -292,15 +414,15 @@ function qcI(t, pileTipDepth)
 	//var rows=[];
 	var sum=0;
 	var n=0;
-	var i_start=Math.ceil(pileTipDepth/dy+0.5);
-	var i_end=Math.floor(t/dy+0.5);
-	for(var i=i_start; i<=i_end; i++)
+	var iStart=Math.ceil(pileTipDepth/dy+0.5);
+	var iEnd=Math.floor(t/dy+0.5);
+	for(var i=iStart; i<=iEnd; i++)
 	{
 		//row={};
 		//row.i=i;
-		//row.qc=qcs[i];
+		//row.qc=cptData[i].qc;
 		//rows.push(row);
-		sum+=qcs[i];
+		sum+=cptData[i].qc;
 		n++;
 	}
 	return sum/n;
@@ -310,76 +432,99 @@ function qcII(t, pileTipDepth)
 {
 	var sum=0;
 	var n=0;
-	var i_start=Math.ceil(pileTipDepth/dy+0.5);
-	var i_end=Math.floor(t/dy+0.5);
-	var min=qcs[i_end];
-	//in fact, we go from i_end to i_start, that means upwards
-	for(var i=i_end; i>=i_start; i--)
+	var iStart=Math.ceil(pileTipDepth/dy+0.5);
+	var iEnd=Math.floor(t/dy+0.5);
+	var min=cptData[iEnd].qc;
+	//in fact, we go from iEnd to iStart, that means upwards
+	for(var i=iEnd; i>=iStart; i--)
 	{
 		//row={};
 		//row.i=i;
-		//row.qc=qcs[i];
+		//row.qc=cptData[i].qc;
 		//rows.push(row);
-		if(qcs[i]<=qcs[i+1] && qcs[i]<qcs[i-1])
+		if(cptData[i].qc<=cptData[i+1].cp && cptData[i].qc<cptData[i-1].cp)
 		//this is a minimum place
 		{
-			if(qcs[i]<min)
+			if(cptData[i].qc<min)
 			//this value has to be considered
 			{
-				sum+=qcs[i];
+				sum+=cptData[i].qc;
 				n++;
-				min=qcs[i];
+				min=cptData[i].qc;
 			}
 		}
 	}
 	//checking the last value
-	if(qcs[i_start]<min)
+	if(cptData[iStart].qc<min)
 	//this value has to be considered
 	{
-		sum+=qcs[i_start];
+		sum+=cptData[iStart].qc;
 		n++;
 	}
 	//checking, if have found any minimums at all
 	if(n==0)
 	//if not, the first value has to be added
 	{
-		sum+=qcs[i_end];
+		sum+=cptData[iEnd].qc;
 		n=1;
 	}
 	return sum/n;
 }
 
-function qcIII(t, pileTipDepth, pileHeadDepth, diameter, startValue)
+function qcIII(t, pileTipDepth, pileHeadDepth, diameter)
 {
+	//at first, we determine the lowest value from between t and pileTipDepth (qcII area)
+	var iStart=Math.ceil(pileTipDepth/dy+0.5);
+	var iEnd=Math.floor(t/dy+0.5);
+	var min=cptData[iEnd].qc;
+	for(var i=iEnd; i>=iStart; i--)
+	{
+		if(cptData[i].qc<=cptData[i+1].qc && cptData[i].qc<cptData[i-1].qc)
+		//this is a minimum place
+		{
+			if(cptData[i].qc<min)
+			//this value has to be considered
+			{
+				min=cptData[i].qc;
+			}
+		}
+	}
+	if(cptData[iStart].qc<min)
+	//this value has to be considered
+	{
+		min=cptData[iStart].qc;
+	}
+	var startValue=min;
+	
+	//now, we start with qcIII
 	var sum=0;
 	var n=0;
-	var i_start=Math.ceil(pileTipDepth/dy+0.5);
-	var i_end=Math.floor(Math.max(pileTipDepth-8*diameter, pileHeadDepth)/dy+0.5);
-	var min=startValue;
-	//in fact, we go from i_end to i_start, that means upwards
-	for(var i=i_end; i>=i_start; i--)
+	var iStart=Math.ceil(pileTipDepth/dy+0.5);
+	var iEnd=Math.floor(Math.max(pileTipDepth-8*diameter, pileHeadDepth)/dy+0.5);
+	//in fact, we go from iEnd to iStart, that means upwards
+	for(var i=iEnd; i>=iStart; i--)
 	{
 		//row={};
 		//row.i=i;
-		//row.qc=qcs[i];
+		//row.qc=cptData[i].qc;
 		//rows.push(row);
-		if(qcs[i]<=qcs[i+1] && qcs[i]<qcs[i-1])
+		if(cptData[i].qc<=cptData[i+1].qc && cptData[i].qc<cptData[i-1].qc)
 		//this is a minimum place
 		{
-			if(qcs[i]<min)
+			if(cptData[i].qc<min)
 			//this value has to be considered
 			{
-				sum+=qcs[i];
+				sum+=cptData[i].qc;
 				n++;
-				min=qcs[i];
+				min=cptData[i].qc;
 			}
 		}
 	}
 	//checking the last value
-	if(qcs[i_start]<min)
+	if(cptData[iStart].qc<min)
 	//this value has to be considered
 	{
-		sum+=qcs[i_start];
+		sum+=cptData[iStart].qc;
 		n++;
 	}
 	//checking, if have found any minimums at all
@@ -396,17 +541,17 @@ function qcc(t, pileTipDepth, pileHeadDepth, diameter)
 {
 	var qc1=qcI(t, pileTipDepth);
 	var qc2=qcII(t, pileTipDepth);
-	var qc3=qcIII(t, pileTipDepth, pileHeadDepth, diameter, qc2);
+	var qc3=qcIII(t, pileTipDepth, pileHeadDepth, diameter);
 	return 0.5*qc1+0.25*(qc2+qc3);
 }
 
 function tkrit(pileTipDepth, pileHeadDepth, diameter)
 {
-	var yStart=Math.round((pileTipDepth+0.7*diameter)*100)/100;
-	var yEnd=Math.round((pileTipDepth+4*diameter)*100)/100;
+	var yStart=Math.round((pileTipDepth+0.7*diameter)*50)/50;
+	var yEnd=Math.round((pileTipDepth+4*diameter)*50)/50;
 	var yMin=yStart;
 	var min=qcc(yMin, pileTipDepth, pileHeadDepth, diameter);
-	for(var y=yStart; y<=yEnd; y+=0.01)
+	for(var y=yStart; y<=yEnd; y+=0.02)
 	{
 		var x=qcc(y, pileTipDepth, pileHeadDepth, diameter);
 		if(x<min)
@@ -414,12 +559,27 @@ function tkrit(pileTipDepth, pileHeadDepth, diameter)
 			min=x;
 			yMin=y;
 		}
-		return yMin;
 	}
+	return yMin;
+}
+
+function qcCu(pileTipDepth, diameter)
+{
+	var sum=0;
+	var n=0;
+	var iStart=Math.ceil((pileTipDepth+diameter)/dy+0.5);
+	var iEnd=Math.floor((pileTipDepth+2*diameter)/dy+0.5);
+	for(var i=iStart; i<=iEnd; i++)
+	{
+		sum+=cptData[i].qc;
+		n++;
+	}
+	return sum/n;
 }
 
 function calculate()
 {
+	renderData();
 	//kézi input adatok
 	//manual input data
 	var pileHeadDepth=parseFloat(document.getElementById("pile_head_depth_input").value.replace(",", "."));
@@ -428,6 +588,7 @@ function calculate()
 	var soilType=document.getElementById("soil_type_select").value;
 	var technology=document.getElementById("technology_select").value;
 	var sand_or_gravel=document.getElementById("sand_gravel_select").value;
+	var clayType=document.getElementById("clay_type_select").value;
 	var lambda_b=sand_or_gravel==0?0.6:0.8;
 	var factors=technologycalFactors[technology];
 	
@@ -439,9 +600,9 @@ function calculate()
 	row.i=i;
 	row.h=(i+0.5)*dy-pileHeadDepth;
 	row.isGranular=isGranular(i);
-	row.qc=qcs[i];
-	row.q_s_cal=q_s_cal(i, factors);
-	row.R_s_cal_i=row.h*diameter*Math.PI*row.q_s_cal;
+	row.qc=cptData[i].qc;
+	row.qscal=qscal(i, factors);
+	row.Rscali=row.h*diameter*Math.PI*row.qscal;
 	rows.push(row);
 	for(i++; ((i+0.5)*dy)<=pileTipDepth; i++)
 	{
@@ -449,21 +610,21 @@ function calculate()
 		row.i=i;
 		row.h=dy;
 		row.isGranular=isGranular(i);
-		row.qc=qcs[i];
-		row.q_s_cal=q_s_cal(i, factors);
-		row.R_s_cal_i=row.h*diameter*Math.PI*row.q_s_cal;
+		row.qc=cptData[i].qc;
+		row.qscal=qscal(i, factors);
+		row.Rscali=row.h*diameter*Math.PI*row.qscal;
 		rows.push(row);
 	}
 	row={};
 	row.i=i;
 	row.h=pileTipDepth-(i-0.5)*dy;
 	row.isGranular=isGranular(i);
-	row.qc=qcs[i];
-	row.q_s_cal=q_s_cal(i, factors);
-	row.R_s_cal_i=row.h*diameter*Math.PI*row.q_s_cal;
+	row.qc=cptData[i].qc;
+	row.qscal=qscal(i, factors);
+	row.Rscali=row.h*diameter*Math.PI*row.qscal;
 	rows.push(row);
 
-	var R_s_cal=0;
+	var Rscal=0;
 	table=document.createElement("table");
 	table.setAttribute("class", "sum_table");
 	for(var i=0; i<rows.length; i++)
@@ -474,35 +635,66 @@ function calculate()
 		row.insertCell().textContent=rows[i].h.toFixed(3);
 		row.insertCell().textContent=rows[i].isGranular;
 		row.insertCell().textContent=rows[i].qc.toFixed(2);
-		row.insertCell().textContent=rows[i].q_s_cal.toFixed(1);
-		row.insertCell().textContent=rows[i].R_s_cal_i.toFixed(3);
-		R_s_cal+=rows[i].R_s_cal_i;
+		row.insertCell().textContent=rows[i].qscal.toFixed(1);
+		row.insertCell().textContent=rows[i].Rscali.toFixed(3);
+		Rscal+=rows[i].Rscali;
 	}
 	var cell=table.insertRow().insertCell();
 	cell.setAttribute("colspan", "7");
-	cell.textContent=R_s_cal.toFixed(3);
+	cell.textContent=Rscal.toFixed(3);
 	document.body.appendChild(table);
 	
-	var t=tkrit(pileTipDepth, pileHeadDepth, diameter);
-	var R_b_cal=lambda_b*factors.alpha_b*qcc(tkrit, pileTipDepth, pileHeadDepth, diameter);
 	var outputArea=document.getElementById("output_area");
 	outputArea.innerHTML="";
-	outputArea.textContent+=("Rscal = "+R_s_cal.toFixed(2)+"\n");
-	outputArea.textContent+=("tkrit = "+t+"\n");
-	outputArea.textContent+=("qcI = "+qcI(t, pileTipDepth).toFixed(3)+"\n");
-		var x=qcII(t, pileTipDepth);
-		outputArea.textContent+=("qcII = "+x.toFixed(3)+"\n");
-		outputArea.textContent+=("qcIII = "+qcIII(t, pileTipDepth, pileHeadDepth, diameter, x).toFixed(3)+"\n");
-	console.log("qcII = "+x.toFixed(3));
-	console.log("qcIII = "+qcIII(t, pileTipDepth, pileHeadDepth, diameter, x).toFixed(3));
-	outputArea.textContent+=("Rbcal = "+R_b_cal.toFixed(2)+"\n");
+	outputArea.textContent+=("Rscal = "+Rscal.toFixed(2)+"\n");	
 	
+	var qbcal;
+	if(soilType==1)
+	//granular
+	{
+		var t=tkrit(pileTipDepth, pileHeadDepth, diameter);
+		qbcal=lambda_b*factors.alpha_b*qcc(t, pileTipDepth, pileHeadDepth, diameter);
+		outputArea.textContent+=("tkrit = "+t.toFixed(2)+"\n");
+		outputArea.textContent+=("qcI = "+qcI(t, pileTipDepth).toFixed(3)+"\n");
+		outputArea.textContent+=("qcII = "+qcII(t, pileTipDepth).toFixed(3)+"\n");
+		outputArea.textContent+=("qcIII = "+qcIII(t, pileTipDepth, pileHeadDepth, diameter).toFixed(3)+"\n");
+	}
+	else
+	//cohesive
+	{
+		qbcal=factors.mu_b*9*qcCu(pileTipDepth, diameter)/Nkts[clayType];
+	}
+	var Rbcal=diameter*diameter/4*Math.PI*qbcal*1000;	
+	outputArea.textContent+=("Rbcal = "+Rbcal.toFixed(2)+"\n");
+	
+}
+
+//****************************
+// UI HANDLING
+//****************************
+
+function menuCommandLoad(e)
+{
+	document.getElementById("data_file_button").value=e.target.files[0].name;
+	var fr=new FileReader();
+	fr.addEventListener("load", function(e)
+	{
+		cptData=parseCPTData(event.target.result);
+		//renderData();
+		calculate();
+		/*for(var i=0; i<10; i++)
+		{
+			//console.log(robertsonSoilCathegory(cptData[i].qc, cptData[i].fp));
+			console.log(cptData[i].qc.toFixed(2)+" "+cptData[i].fp.toFixed(2)+" "+cptData[i].soilCathegoryCalculated+" "+cptData[i].isGranularCalculated);
+		}*/
+	});
+	fr.readAsText(e.target.files[0]);
 }
 
 //****************************
 // Attaches mouse actions to canvas
 //****************************
-
+/*
 function smartizeCanvas(c)
 {
 	c.actualView=new ViewProperties();
@@ -552,10 +744,6 @@ function smartizeCanvas(c)
 }
 
 
-
-
-
-
 //Ez határozza meg hogy hova rajzolódjon az ábra a vásznon
 function ViewProperties()
 {
@@ -578,4 +766,5 @@ function ViewProperties()
 	};
 	return this;
 };
+*/
 
