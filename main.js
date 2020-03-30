@@ -27,6 +27,7 @@ function bodyLoaded(e)
 {
 	canvasControl=document.getElementById("paint_area");
 	//smartizeCanvas(canvasControl);
+	switchUIToEmptyState();
 	renderRobertsonDiagram();
 };
 
@@ -642,7 +643,7 @@ function calculate()
 	var cell=table.insertRow().insertCell();
 	cell.setAttribute("colspan", "7");
 	cell.textContent=Rscal.toFixed(3);
-	document.body.appendChild(table);
+	//document.body.appendChild(table);
 	
 	var outputArea=document.getElementById("output_area");
 	outputArea.innerHTML="";
@@ -680,15 +681,63 @@ function menuCommandLoad(e)
 	fr.addEventListener("load", function(e)
 	{
 		cptData=parseCPTData(event.target.result);
-		//renderData();
+		switchUIToWorkingState();
 		calculate();
-		/*for(var i=0; i<10; i++)
-		{
-			//console.log(robertsonSoilCathegory(cptData[i].qc, cptData[i].fp));
-			console.log(cptData[i].qc.toFixed(2)+" "+cptData[i].fp.toFixed(2)+" "+cptData[i].soilCathegoryCalculated+" "+cptData[i].isGranularCalculated);
-		}*/
 	});
 	fr.readAsText(e.target.files[0]);
+}
+
+function switchUIToEmptyState()
+{
+	document.getElementById("pile_head_depth_input").disabled=true;
+	document.getElementById("pile_tip_depth_input").disabled=true;
+	document.getElementById("diameter_input").disabled=true;
+	document.getElementById("soil_type_select").disabled=true;
+	document.getElementById("technology_select").disabled=true;
+	document.getElementById("clay_type_select").disabled=true;
+	document.getElementById("sand_gravel_select").disabled=true;
+	document.getElementById("result_button").disabled=true;
+}
+
+function switchUIToWorkingState()
+{
+	document.getElementById("pile_head_depth_input").disabled=false;
+	document.getElementById("pile_tip_depth_input").disabled=false;
+	document.getElementById("diameter_input").disabled=false;
+	document.getElementById("soil_type_select").disabled=false;
+	document.getElementById("technology_select").disabled=false;
+	document.getElementById("clay_type_select").disabled=false;
+	document.getElementById("sand_gravel_select").disabled=false;
+	//document.getElementById("result_button").disabled=false;
+	switchSoilType();
+}
+
+function switchSoilTypeToCohesive()
+{
+	document.getElementById("clay_type_label").style.display="initial";
+	document.getElementById("clay_type_select").style.display="initial";
+	document.getElementById("sand_gravel_label").style.display="none";
+	document.getElementById("sand_gravel_select").style.display="none";
+}
+
+function switchSoilTypeToGranular()
+{
+	document.getElementById("clay_type_label").style.display="none";
+	document.getElementById("clay_type_select").style.display="none";
+	document.getElementById("sand_gravel_label").style.display="initial";
+	document.getElementById("sand_gravel_select").style.display="initial";
+}
+
+function switchSoilType()
+{
+	if(document.getElementById("soil_type_select").value==0)
+	{
+		switchSoilTypeToCohesive();
+	}
+	else
+	{
+		switchSoilTypeToGranular();
+	}
 }
 
 //****************************
