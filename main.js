@@ -123,32 +123,59 @@ function renderData()
 	
 	//set up
 	var c=canvasControl.getContext('2d');
-	var leftSideWidth=c.canvas.width*0.65;
-	var rightSideWidth=c.canvas.width-leftSideWidth;
-	var hScale=leftSideWidth/max_qc;
+	var depthStripeWidth=20;
+	var soilTypeStripeLeft=depthStripeWidth;
+	var soilTypeStripeWidth=10;
+	var space1StripeLeft=soilTypeStripeLeft+soilTypeStripeWidth;
+	var space1StripeWidth=5;
+	var qcStripeLeft=space1StripeLeft+space1StripeWidth;
+	var qcStripeWidth=200;
+	var pileStripeLeft=qcStripeLeft+qcStripeWidth
+	var pileStripeWidth=c.canvas.width-pileStripeLeft;
+	
+	//var leftSideWidth=c.canvas.width*0.65;
+	//var rightSideWidth=c.canvas.width-leftSideWidth;
+	var qcScale=qcStripeWidth/max_qc;
 	var vScale=c.canvas.height/cptData.length/dy;
 	c.fillStyle = "white";
 	c.fillRect(0, 0, c.canvas.width, c.canvas.height);
+	
+	for(var i=0; i<cptData.length; i++)
+	{
+		if(cptData[i].isGranularCalculated==true)
+		{
+			c.fillStyle = "yellow";
+		}
+		else
+		{
+			c.fillStyle = "blue";
+		}
+		c.fillRect(soilTypeStripeLeft, (i-0.5)*dy*vScale, soilTypeStripeWidth, dy*vScale);
+	}
+	
 	//lines in each meter
-	c.strokeStyle = "gray";
+	c.strokeStyle="gray";
+	c.fillStyle="gray";
 	c.beginPath();
 	for(var y=0; y<=cptData.length*dy; y++)
 	{
 		var scaledY=Math.round(y*vScale)+0.5;
 		c.moveTo(0, scaledY);
 		c.lineTo(c.canvas.width, scaledY);
+		c.fillText("-"+y.toFixed(0), 0, scaledY-2);
 	}
 	c.stroke();
 	
 	//cpt diagram
 	c.strokeStyle = "red";
 	c.beginPath();
-	c.moveTo(cptData[0].qc*hScale, 0*vScale);
+	c.moveTo(qcStripeLeft+cptData[0].qc*qcScale, 0*vScale);
 	for(var i=1; i<cptData.length; i++)
 	{
-		c.lineTo(cptData[i].qc*hScale, i*dy*vScale);
+		c.lineTo(qcStripeLeft+cptData[i].qc*qcScale, i*dy*vScale);
 	}
 	c.stroke();
+	
 	
 	//pile geometry
 	var pileHeadDepth=parseFloat(document.getElementById("pile_head_depth_input").value.replace(",", "."));
@@ -157,7 +184,7 @@ function renderData()
 	c.strokeStyle = "black";
 	c.fillStyle = "gray";
 	c.beginPath();
-	c.rect(leftSideWidth+rightSideWidth/2-vScale*diameter/2, pileHeadDepth*vScale, diameter*vScale, (pileTipDepth-pileHeadDepth)*vScale);
+	c.rect(pileStripeLeft+pileStripeWidth/2-vScale*diameter/2, pileHeadDepth*vScale, diameter*vScale, (pileTipDepth-pileHeadDepth)*vScale);
 	c.fill();
 	c.stroke();
 }
@@ -359,28 +386,67 @@ function renderRobertsonDiagram()
 
 function robertsonSoilCathegory(qc, rf)
 {
-	var x=rf*20;
-	var y=Math.log(qc)/Math.LN10*200/3+200/3;
-	robertsonDiagramContext.fillStyle="black";
-	robertsonDiagramContext.beginPath();
-	robertsonDiagramContext.arc(x, y, 1, 0, 2*Math.PI);
-	robertsonDiagramContext.fill();
-	for(var i=0; i<robertsonRegions.length; i++)
+	if(qc<=0.1)
+	//below the diagram
 	{
-		if(robertsonDiagramContext.isPointInPath(robertsonRegions[i], x, y, "evenodd")==true)
-		{
-			return(i);
-		}
+		return 1;
 	}
-	return NaN;
+	else
+	{
+		var x=rf*20;
+		var y=Math.log(qc)/Math.LN10*200/3+200/3;
+		robertsonDiagramContext.fillStyle="black";
+		robertsonDiagramContext.beginPath();
+		robertsonDiagramContext.arc(x, y, 1, 0, 2*Math.PI);
+		robertsonDiagramContext.fill();
+		for(var i=0; i<robertsonRegions.length; i++)
+		{
+			if(robertsonDiagramContext.isPointInPath(robertsonRegions[i], x, y, "evenodd")==true)
+			{
+				return(i);
+			}
+		}
+		return NaN;
+	}
 	//throw "No respective soil cathegory found for qc="+qc+" rf="+rf;
 }
 
 function robertsonIsGranular(qc, rf)
 {
-	var x=rf*20;
-	var y=Math.log(qc)/Math.LN10*200/3+200/3;
-	return robertsonDiagramContext.isPointInPath(robertsonGranularRegion, x, y, "evenodd");
+	if(qc<=0.1)
+	//below the diagram
+	{
+		return false;
+	}
+	else
+	{
+		if(rf>=10)
+		//right from the diagram
+		{
+			return false;
+		}
+		else
+		{
+			if(qc>=100)
+			//above the diagram
+			{
+				if(rf>=94/20)
+				{
+					return false;
+				}
+				else
+				{
+					return true;
+				}
+			}
+			else
+			{
+				var x=rf*20;
+				var y=Math.log(qc)/Math.LN10*200/3+200/3;
+				return robertsonDiagramContext.isPointInPath(robertsonGranularRegion, x, y, "evenodd");
+			}
+		}
+	}
 }
 
 
