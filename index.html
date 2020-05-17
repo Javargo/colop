@@ -4,7 +4,18 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1">
 		<title>Cölöp méretezés teszt</title>
+		<script src="InputBinder.js" defer></script>
+		<script src="XmlTree.js" defer></script>
+		<script src="generic.js" defer></script>
+		<script src="constants.js" defer></script>
+		<script src="main.js" defer></script>
 		<style>
+			body
+			{
+				font-family: "Lucida Sans Unicode", "Lucida Grande", sans-serif;
+				font-size: 12px;
+			}
+			
 			table.sum_table
 			{
 				border: 1px solid gray;
@@ -22,25 +33,29 @@
 				text-align: right;
 			}
 			
+			input, select
+			{
+				font-size: 12px;
+			}
+			
 		</style>
-		<script src="main.js" defer></script>
 	</head>
 	<body onload="bodyLoaded(event)">
 		<div id="grid_container" style="display: grid; grid-template-columns: 305px auto auto; grid-gap: 5px; padding: 5px; max-width: 800px;">
-			<div id="cpt_graph_area" style="grid-column: 1; grid-row: 1 / span 12; overflow-y: auto;">
+			<div id="cpt_graph_area" style="grid-column: 1; grid-row: 1 / span 13; overflow-y: auto;">
 				<canvas id="paint_area" width="300" height="600"></canvas>
 			</div>
 			
 			<input id="data_file_hidden_input" type="file" style="display: none;" onchange="menuCommandLoad(event)"/>
 			
 			<label for="data_file_button" style="grid-column: 2; grid-row: 1">CPT adatfájl</label>
-			<input id="data_file_button" type="button" value="Adatfájl betöltése" style="grid-column: 3; grid-row: 1;  text-align: left;" onclick="document.getElementById('data_file_hidden_input').click()"/>
+			<input id="data_file_button" type="button" value="Adatfájl betöltése" style="grid-column: 3; grid-row: 1; text-align: left;" onclick="document.getElementById('data_file_hidden_input').click()"/>
 			
 			<label for="pile_head_depth_input" style="grid-column: 2; grid-row: 2">Cölöpfej mélysége [m]</label>
 			<input id="pile_head_depth_input" type="text" value="0" style="grid-column: 3; grid-row: 2;" onchange="calculate()"/>
 			
-			<label for="pile_tip_depth_input" style="grid-column: 2; grid-row: 3">Cölöpfej mélysége [m]</label>
-			<input id="pile_tip_depth_input" type="text" value="20" style="grid-column: 3; grid-row: 3" onchange="calculate()"/>
+			<label for="pile_tip_depth_input" style="grid-column: 2; grid-row: 3">Cölöptalp mélysége [m]</label>
+			<input id="pile_tip_depth_input" type="text" value="20" style="grid-column: 3; grid-row: 3" onchange="calculate();"/>
 			
 			<label for="diameter_input" style="grid-column: 2; grid-row: 4">Cölöp átmérője [m]</label>
 			<input id="diameter_input" type="text" value="0,62" style="grid-column: 3; grid-row: 4" onchange="calculate()"/>
@@ -61,30 +76,35 @@ helyén betonozott</option>
 				</optgroup>
 			</select>
 			
-			<label for="soil_type_select" style="grid-column: 2; grid-row: 6">Talaj típusa a csúcs környezetében</label>
-			<select id="soil_type_select" style="grid-column: 3; grid-row: 6" onchange="switchSoilType(); calculate();">
+			<label id="automatic_label" for="clay_type_select" style="grid-column: 2; grid-row: 6">Talajtípus automatikus meghatározása</label>
+			<div style="grid-column: 3; grid-row: 6">
+				<input id="automatic_checkbox" type="checkbox" onchange="calculate()"/>
+			</div>
+			
+			<label id="soil_type_label" for="soil_type_select" style="grid-column: 2; grid-row: 7">Talaj típusa a csúcs alatt</label>
+			<select id="soil_type_select" style="grid-column: 3; grid-row: 7" onchange="switchSoilType(); calculate();" oninput="document.getElementById('automatic_checkbox').checked=false;">
 				<option value="0">kötött</option>
 				<option value="1">szemcsés</option>
 			</select>
 			
-			<label id="clay_type_label" for="clay_type_select" style="grid-column: 2; grid-row: 7">Talajfajta a csúcs környezetében</label>
-			<select id="clay_type_select" style="grid-column: 3; grid-row: 7" onchange="calculate()">
+			<label id="clay_type_label" for="clay_type_select" style="grid-column: 2; grid-row: 8">Talajfajta</label>
+			<select id="clay_type_select" style="grid-column: 3; grid-row: 8" onchange="calculate()">
 				<option value="0">sovány agyag</option>
 				<option value="1" selected="selected">közepes agyag</option>
 				<option value="2">kövér agyag</option>
 			</select>
 			
-			<label id="sand_gravel_label" for="sand_gravel_select" style="grid-column: 2; grid-row: 7">Talajfajta a csúcs környezetében</label>
-			<select id="sand_gravel_select" style="grid-column: 3; grid-row: 7" onchange="calculate()">
+			<label id="sand_gravel_label" for="sand_gravel_select" style="grid-column: 2; grid-row: 8">Talajfajta</label>
+			<select id="sand_gravel_select" style="grid-column: 3; grid-row: 8" onchange="calculate()">
 				<option value="0" selected="selected">homok</option>
 				<option value="1">kavics</option>
 			</select>
 
 			<!--input type="button" value="Számítás" onclick="calculate()" style="grid-column: 2 / span 2; grid-row: 8"/-->
 			
-			<div id="output_area" style="grid-row: 8 / span 3; grid-column: 2 / span 2; background-color: #cccccc; min-height: 100px; white-space: pre-line"><a href="CPTu_19.txt" download="CPTu_19.txt">Teszt adatok letöltése</a></div>
+			<div id="output_area" style="grid-row: 9 / span 3; grid-column: 2 / span 2; background-color: #cccccc; min-height: 100px; white-space: pre-line"><a href="CPTu_19.txt" download="CPTu_19.txt">Teszt adatok letöltése</a></div>
 			
-			<input id="result_button" type="button" value="Részletes eredmények" style="grid-column: 2 / span 2; grid-row: 11;  text-align: center;" onclick=""/>
+			<input id="result_button" type="button" value="Részletes eredmények" style="grid-column: 2 / span 2; grid-row: 12;  text-align: center;" onclick="menuCommandShowDetailedResults(event)"/>
 		</div>
 
 		
