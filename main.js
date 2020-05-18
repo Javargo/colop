@@ -383,7 +383,7 @@ function Rscal(pileHeadDepth, pileTipDepth, factors, record)
 	for(var i=iStart; i<=iEnd; i++)
 	{
 		var qscali=qscal(i, factors);
-		sum+=qscali;
+		sum+=dy*qscali;
 		if(record)
 		{
 			var row=table.add("row");
@@ -704,9 +704,21 @@ function menuCommandLoad(e)
 	var fr=new FileReader();
 	fr.addEventListener("load", function(e)
 	{
-		cptData.parse(event.target.result);
-		switchUIToWorkingState();
-		calculate();
+		var stop=false;
+		try
+		{
+			cptData.parse(event.target.result);
+		}
+		catch (error)
+		{
+			document.getElementById("output_area").textContent=error;
+			stop=true;
+		}
+		if(stop==false)
+		{
+			switchUIToWorkingState();
+			calculate();
+		}
 	});
 	fr.readAsText(e.target.files[0]);
 }
