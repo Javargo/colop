@@ -681,15 +681,15 @@ function calculate()
 	
 	var outputArea=document.getElementById("output_area");
 	outputArea.innerHTML="";
-	outputArea.textContent+=("Rscal = "+RscalValue.toFixed(2)+"\n");
-	outputArea.textContent+=("tkrit = "+t.toFixed(2)+"\n");
-	outputArea.textContent+=("qcI = "+qcI(t, inputs.pileTipDepth).toFixed(3)+"\n");
-	outputArea.textContent+=("qcII = "+qcII(t, inputs.pileTipDepth).toFixed(3)+"\n");
-	outputArea.textContent+=("qcIII = "+qcIII(t, inputs.pileTipDepth, inputs.pileHeadDepth, inputs.diameter).toFixed(3)+"\n");
-	outputArea.textContent+=("qbcal (granular) = "+qbcalGranular.toFixed(2)+"\n");
-	outputArea.textContent+=("qbcal (cohesive) = "+qbcalCohesive.toFixed(2)+"\n");
-	outputArea.textContent+=("Rbcal = "+Rbcal.toFixed(2)+"\n");
-	outputArea.textContent+=("Rcal = "+Rcal.toFixed(2)+"\n");
+	outputArea.textContent+=("Rscal = "+RscalValue.toFixed(2)+" kN\n");
+	outputArea.textContent+=("tkrit = "+t.toFixed(2)+" m\n");
+	outputArea.textContent+=("qcI = "+qcI(t, inputs.pileTipDepth).toFixed(3)+" MPa\n");
+	outputArea.textContent+=("qcII = "+qcII(t, inputs.pileTipDepth).toFixed(3)+" MPa\n");
+	outputArea.textContent+=("qcIII = "+qcIII(t, inputs.pileTipDepth, inputs.pileHeadDepth, inputs.diameter).toFixed(3)+" MPa\n");
+	outputArea.textContent+=("qbcal (granular) = "+qbcalGranular.toFixed(2)+" MPa\n");
+	outputArea.textContent+=("qbcal (cohesive) = "+qbcalCohesive.toFixed(2)+" MPa\n");
+	outputArea.textContent+=("Rbcal = "+Rbcal.toFixed(2)+" kN\n");
+	outputArea.textContent+=("Rcal = "+Rcal.toFixed(2)+" kN\n");
 	
 	switchUIToCalulated();
 }
